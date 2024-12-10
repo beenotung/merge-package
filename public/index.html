@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>merge package.json</title>
+    <style>
+      .inputs {
+        display: flex;
+      }
+      .inputs > label {
+        flex-grow: 1;
+      }
+      label {
+        display: block;
+      }
+      label > span {
+        display: block;
+      }
+      label > textarea {
+        width: calc(100% - 1rem);
+        min-height: 10rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>merge package.json</h1>
+    <div class="inputs">
+      <label>
+        <span> Local package.json: </span>
+        <textarea id="local_textarea"></textarea>
+      </label>
+      <label>
+        <span> Remote package.json: </span>
+        <textarea id="remote_textarea"></textarea>
+      </label>
+    </div>
+    <label style="margin-top: 1rem">
+      <span> Merged package.json: </span>
+      <textarea id="merged_textarea"></textarea>
+    </label>
+    <script>
+      local_textarea.oninput = compare
+      remote_textarea.oninput = compare
+      merged_textarea.oninput = compare
+      function compare(event) {
+        label_init(event.target)
+
+        if (!local_textarea.value) return
+        if (!remote_textarea.value) return
+        if (!merged_textarea.value) return
+
+        let local = JSON.parse(local_textarea.value)
+        let remote = JSON.parse(remote_textarea.value)
+        let merged = JSON.parse(merged_textarea.value)
+
+        merge_deps(local.dependencies, merged.dependencies)
+        merge_deps(local.devDependencies, merged.devDependencies)
+        merge_deps(local.peerDependencies, merged.peerDependencies)
+
+        merge_deps(remote.dependencies, merged.dependencies)
+        merge_deps(remote.devDependencies, merged.devDependencies)
+        merge_deps(remote.peerDependencies, merged.peerDependencies)
+
+        update_textarea(local_textarea, local)
+        update_textarea(remote_textarea, remote)
+        update_textarea(merged_textarea, merged)
+      }
+      function update_textarea(textarea, pkg) {
+        let value = JSON.stringify(pkg, null, 2)
+        if (textarea.value == value) return
+        textarea.value = value
+        label_updated(textarea)
+      }
+      function label_updated(textarea) {
+        let span = textarea.parentElement.querySelector('span')
+        let [prefix] = span.textContent.split(':')
+        span.textContent = `${prefix}: updated`
+        span.style.color = 'green'
+      }
+      function label_init(textarea) {
+        let span = textarea.parentElement.querySelector('span')
+        let [prefix] = span.textContent.split(':')
+        span.textContent = `${prefix}:`
+        span.style.color = ''
+      }
+      function merge_deps(src, dest) {
+        if (!src) return
+        if (!dest) return
+
+        for (let key in src) {
+          let src_version = src[key]
+          let dest_version = dest[key]
+
+          let version = merge_version(src_version, dest_version)
+          if (!version) continue
+
+          src[key] = version
+          dest[key] = version
+        }
+      }
+      function merge_version(a, b) {
+        if (!a) return
+        if (!b) return
+
+        if (a == b) return a
+
+        let a_version = parse_version(a)
+        let b_version = parse_version(b)
+
+        if (a_version.length != 3) return
+        if (b_version.length != 3) return
+
+        for (let i = 0; i < 3; i++) {
+          if (+a_version[i] > +b_version[i]) return a
+          if (+b_version[i] > +a_version[i]) return b
+        }
+      }
+      function parse_version(text) {
+        return text.split('.').map(part =>
+          part
+            .split('')
+            .filter(char => '0' <= char && char <= '9')
+            .join(''),
+        )
+      }
+    </script>
+  </body>
+</html>
